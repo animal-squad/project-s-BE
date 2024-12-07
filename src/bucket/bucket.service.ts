@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common'
-import { BucketDto, BucketResponseDto, CreateBucketDto } from './dto/bucket.dto'
+import { BucketDto } from './dto/bucket.dto'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LinkService } from '../link/link.service'
 import { PaginatedBucketDto, PaginationQueryDto } from '../utils/pagination.dto'
 import { Bucket } from '@prisma/client'
 import { BucketUnauthorizedUserException, NotBucketOwnerException } from '../user/user.exception'
 import { BucketNotFoundException } from './bucket.exception'
+import { SaveBucketFailException } from '../extension/extension.exeption'
 
 @Injectable()
 export class BucketService {
@@ -14,36 +15,59 @@ export class BucketService {
         private readonly linkService: LinkService,
     ) {}
 
-    private async getBucket(bucketId: string) {
+    /**
+     * 바구니의 정보를 가져오기
+     * @param bucketId 바구니 식별자
+     */
+    async getBucket(bucketId: string) {
         const bucket = await this.prisma.bucket.findUnique({
             where: {
                 bucketId: bucketId,
-            },
-            include: {
-                bucketLink: {
-                    select: {
-                        link: true,
-                    },
-                },
             },
         })
         if (!bucket) {
             throw new BucketNotFoundException()
         }
-        return bucket
+        const links = await this.linkService.findMany(bucket.link)
+        const response: BucketDto = {
+            userId: bucket.userId,
+            title: bucket.title,
+            linkCount: bucket.link.length,
+            createdAt: bucket.createdAt,
+            isShared: bucket.isShared,
+            links: links,
+        }
+        return response
     }
 
-    async create(createBucketDto: CreateBucketDto, userId: number) {
-        const bucket = await this.prisma.bucket.create({
-            data: {
-                title: createBucketDto.title || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) + '에 생성된 바구니',
-                userId: userId,
-                createdAt: new Date(),
-            },
-        })
-        return bucket.bucketId
+    /**
+     * 바구니 생성하기
+     * @param title 바구니 제목, null이 올 수 있음
+     * @param userId 사용자 식별자
+     * @param links 익스텐션에서 받아온 링크 정보
+     */
+    async create(title: string, userId: number, links) {
+        const link = links.map(link => link.linkId)
+        try {
+            const bucket = await this.prisma.bucket.create({
+                data: {
+                    title: title || new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) + '에 생성된 바구니',
+                    userId: userId,
+                    link: link,
+                    createdAt: new Date(),
+                },
+            })
+            return bucket.bucketId
+        } catch (err) {
+            throw new SaveBucketFailException()
+        }
     }
 
+    /**
+     * 모든 바구니 조회하기
+     * @param userId 사용자 식별자
+     * @param query 페이지 정보
+     */
     async findAll(userId: number, query: PaginationQueryDto): Promise<PaginatedBucketDto<Bucket>> {
         const page = Number(query.page) || 1
         const take = Number(query.take) || 10
@@ -58,11 +82,6 @@ export class BucketService {
                 orderBy: {
                     createdAt: 'desc',
                 },
-                include: {
-                    _count: {
-                        select: { bucketLink: true },
-                    },
-                },
             }),
             this.prisma.bucket.count({
                 where: { userId: userId },
@@ -73,13 +92,19 @@ export class BucketService {
             bucketId: bucket.bucketId,
             userId: userId,
             title: bucket.title,
-            linkCount: bucket._count.bucketLink,
+            linkCount: bucket.link.length,
             createdAt: bucket.createdAt,
+            link: bucket.link,
             isShared: false,
         }))
         return new PaginatedBucketDto(formattedBuckets, page, take, totalBuckets)
     }
 
+    /**
+     * 바구니 상세 조회
+     * @param bucketId 바구니 식별자
+     * @param userId 사용자 식별자
+     */
     async findOne(bucketId: string, userId: number) {
         const bucket = await this.getBucket(bucketId)
 
@@ -87,19 +112,14 @@ export class BucketService {
             throw new BucketUnauthorizedUserException()
         }
 
-        const bucketResponse: BucketResponseDto = {
-            userId: bucket.userId,
-            title: bucket.title,
-            linkCount: bucket.bucketLink.length,
-            createdAt: bucket.createdAt,
-            isShared: bucket.isShared,
-            isMine: bucket.userId === userId,
-            links: bucket.bucketLink.map(data => data.link),
-        }
-
-        return bucketResponse
+        return { ...bucket, isMine: bucket.userId === userId }
     }
 
+    /**
+     * 공유 권한 변경
+     * @param bucketId 바구니 식별자
+     * @param permission 공유 권한
+     */
     async updateShare(bucketId: string, permission: boolean) {
         const bucket = await this.prisma.bucket.update({
             where: {
@@ -116,19 +136,31 @@ export class BucketService {
         }
     }
 
+    /**
+     * 바구니 복사
+     * @param bucket 복사할 바구니 정보
+     * @param userId 사용자 식별자
+     */
     async createPastedBucket(bucket: BucketDto, userId: number) {
+        const newLinks = await this.linkService.createMany(bucket.links, userId)
+
         const newBucket = await this.prisma.bucket.create({
             data: {
                 title: bucket.title + '의 복사본',
                 userId: userId,
+                link: newLinks.map(link => link.linkId),
             },
         })
-
-        await this.linkService.createManyAndMapping(bucket.links, userId, newBucket.bucketId)
 
         return newBucket.bucketId
     }
 
+    /**
+     * 바구니 제목 변경
+     * @param title 변경할 제목
+     * @param bucketId 바구니 식별자
+     * @param userId 사용자 식별자
+     */
     async updateBucketTitle(title: string, bucketId: string, userId: number) {
         const bucket = await this.prisma.bucket.findUnique({
             where: {
@@ -148,21 +180,17 @@ export class BucketService {
         })
     }
 
-    async deleteBucket(bucketId: string, userId: number) {
+    /**
+     * 바구니 단일 삭제
+     * @param bucketId 삭제할 바구니 식별자
+     */
+    async deleteBucket(bucketId: string) {
         const bucket = await this.getBucket(bucketId)
-        if (bucket.userId !== userId) {
-            throw new NotBucketOwnerException()
-        }
-        const linkIds = bucket.bucketLink.map(data => data.link.linkId)
-        const deleteRelation = this.prisma.bucketLink.deleteMany({
-            where: {
-                bucketId: bucketId,
-            },
-        })
+
         const deleteLinks = this.prisma.link.deleteMany({
             where: {
                 linkId: {
-                    in: linkIds,
+                    in: bucket.links.map(link => link.linkId),
                 },
             },
         })
@@ -171,6 +199,6 @@ export class BucketService {
                 bucketId: bucketId,
             },
         })
-        return await this.prisma.$transaction([deleteRelation, deleteLinks, deleteBucket])
+        return await this.prisma.$transaction([deleteLinks, deleteBucket])
     }
 }

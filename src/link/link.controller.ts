@@ -8,7 +8,7 @@ import { PaginatedLinkDto, PaginationQueryDto } from '../utils/pagination.dto'
 import { Link } from '@prisma/client'
 import { ApiBody, ApiCookieAuth, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { NotLoginResponse } from '../user/user.exception'
-import { ClassificationFailResponse } from '../bucket/bucket.exception'
+import { ClassificationFailResponse } from '../extension/extension.exeption'
 
 @ApiTags('Link API')
 @ApiCookieAuth('connect.sid')

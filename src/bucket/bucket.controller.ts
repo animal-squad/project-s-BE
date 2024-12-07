@@ -84,6 +84,6 @@ export class BucketController {
     @ApiResponse({ status: 403, description: '본인의 바구니가 아닐 경우 에러 발생', type: NotBucketOwnerResponse })
     @Delete('/:id')
     async deleteBucekt(@Param('id') bucketId: string, @GetUser() userId: number) {
-        return await this.bucketService.deleteBucket(bucketId, userId)
+        return await this.bucketService.deleteBucket(bucketId)
     }
 }

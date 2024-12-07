@@ -18,6 +18,7 @@ model User {
     email String @unique
     name String
     photo String
+    createdAt DateTime @default(now())
     links Link[]
     buckets Bucket[]
 }
@@ -29,16 +30,7 @@ model Bucket {
     title String
     createdAt DateTime @default(now())
     isShared Boolean @default(false)
-    bucketLink BucketLink[]
-}
-
-model BucketLink {
-    bucketId String @db.VarChar(8)
-    linkId String @db.VarChar(8)
-    bucket Bucket @relation(fields: [bucketId], references: [bucketId])
-    link Link @relation(fields: [linkId], references: [linkId])
-
-    @@id([bucketId, linkId])
+    link String[] @default([])
 }
 
 model Link {
@@ -52,5 +44,4 @@ model Link {
     tags String[] @default([])
     keywords String[] @default([])
     title String?
-    bucketLink BucketLink[]
 }

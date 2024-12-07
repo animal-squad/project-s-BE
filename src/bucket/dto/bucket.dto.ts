@@ -1,26 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger'
-import { LinkDto } from '../../link/dto/link.dto'
+import { CreateLinkDto, LinkDto } from '../../link/dto/link.dto'
 import { IsOptional } from 'class-validator'
 
 export class CreateBucketDto {
     @IsOptional()
-    @ApiProperty({ description: 'Title of the bucket' })
-    title: string
+    @ApiProperty({ description: '바구니 제목, 입력은 선택', example: '샘플 바구니' })
+    title?: string
 
-    @ApiProperty({ description: 'Links of the bucket' })
-    links: InputLinkDto[]
+    @ApiProperty({ description: '바구니에 포함될 링크들' })
+    links: CreateLinkDto[]
 
-    @ApiProperty({ description: 'User email' })
+    @ApiProperty({ description: '사용자 이메일', example: 'user@gmail.com' })
     email: string
-}
-
-export class InputLinkDto {
-    @ApiProperty({ description: 'Link URL', example: 'https://youtube.com' })
-    URL: string
-
-    @IsOptional()
-    @ApiProperty({ description: 'Link content' })
-    content?: string
 }
 
 export class BucketDto {

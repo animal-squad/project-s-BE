@@ -23,12 +23,6 @@ export class CreateLinkDto {
     @ApiProperty({ description: '링크 URL', example: 'https://youtube.com' })
     URL: string
 
-    @ApiProperty({ description: '링크 제목', example: '유튭' })
-    title?: string
-
-    @ApiProperty({ description: '링크의 태그', example: ['생활', '여가'] })
-    tags?: string[]
-
     @ApiProperty({ description: '링크 내용' })
     content?: string
 }
@@ -43,7 +37,7 @@ export class LinkDto {
     @ApiProperty({ description: '링크의 태그', example: ['tag1', 'tag2'] })
     tags?: string[]
 
-    @ApiProperty({ description: '링크의 키워드', example: ['keyword1']})
+    @ApiProperty({ description: '링크의 키워드', example: ['keyword1'] })
     keywords: string[]
 
     @ApiProperty({ description: '링크 생성일', example: new Date() })
