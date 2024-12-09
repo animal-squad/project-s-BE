@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common'
 import { LinkService } from './link.service'
 import { GetUser } from '../user/user.decorator'
-import { BodyTagDto, CreateLinkDto, DeleteLinkDto, LinkDto, UpdateTitleDto } from './dto/link.dto'
+import { BodyTagDto, CreateLinkDto, DeleteLinkDto, LinkDto, SearchLinkQueryDto, UpdateTitleDto } from './dto/link.dto'
 import { firstValueFrom } from 'rxjs'
 import { HttpService } from '@nestjs/axios'
 import { PaginatedLinkDto, PaginationQueryDto } from '../utils/pagination.dto'
@@ -9,8 +9,9 @@ import { Link } from '@prisma/client'
 import { ApiBody, ApiCookieAuth, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
 import { NotLoginResponse } from '../user/user.exception'
 import { ClassificationFailResponse } from '../extension/extension.exeption'
+import { NoSearchWordException } from '../bucket/bucket.exception'
 
-@ApiTags('Link API')
+@ApiTags('Link')
 @ApiCookieAuth('connect.sid')
 @ApiHeader({ name: 'Cookie', description: '세션 id가 저장된 쿠키', required: true })
 @ApiResponse({ status: 401, description: '쿠키에 세션 정보 없음', type: NotLoginResponse })
@@ -107,5 +108,20 @@ export class LinkController {
     @Get()
     async getLinks(@Query() query: PaginationQueryDto, @Body() tags: BodyTagDto, @GetUser() userId: number): Promise<PaginatedLinkDto<Link>> {
         return this.linkService.getLinks(query, tags, userId)
+    }
+
+    @ApiOperation({
+        summary: '링크 검색 API',
+        description: '사용자의 링크를 제목과 키워드를 기준으로 검색',
+    })
+    @ApiQuery({ description: '검색 정보', type: SearchLinkQueryDto })
+    @ApiResponse({ status: 200, description: '검색 결과 반환' })
+    @ApiResponse({ status: 400, description: '검색어 없음' })
+    @Get('/search')
+    async searchLink(@Query() query: SearchLinkQueryDto, @GetUser() userId: number) {
+        if (!query.query) {
+            throw new NoSearchWordException()
+        }
+        return this.linkService.searchLink(query, userId)
     }
 }

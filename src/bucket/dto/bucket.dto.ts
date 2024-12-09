@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger'
 import { CreateLinkDto, LinkDto } from '../../link/dto/link.dto'
 import { IsOptional } from 'class-validator'
+import { Type } from 'class-transformer'
 
 export class CreateBucketDto {
     @IsOptional()
@@ -107,4 +108,18 @@ export class UpdateShareResponseDto {
 export class UpdateTitleDto {
     @ApiProperty({ description: '변경할 제목', example: '멋진 제목의 바구니' })
     title: string
+}
+
+export class SearchBucketQueryDto {
+    @Type(() => Number)
+    @IsOptional()
+    page?: number
+
+    @Type(() => Number)
+    @IsOptional()
+    take?: number
+
+    @ApiProperty({ description: '검색어', example: '바구니' })
+    @IsOptional()
+    query?: string
 }

@@ -109,7 +109,6 @@ export class PaginatedLinkDto<T> {
             hasPrevPage: false,
             page: 1,
             take: 10,
-            tag: [],
         },
     })
     meta: {
@@ -119,10 +118,9 @@ export class PaginatedLinkDto<T> {
         hasPrevPage: boolean
         page: number
         take: number
-        tag: string[]
     }
 
-    constructor(links: T[], page: number, take: number, tag: string[], totalLinks: number) {
+    constructor(links: T[], page: number, take: number, totalLinks: number) {
         this.links = links
         this.meta = {
             totalLinks,
@@ -131,7 +129,6 @@ export class PaginatedLinkDto<T> {
             hasPrevPage: page > 1,
             page,
             take,
-            tag,
         }
     }
 }

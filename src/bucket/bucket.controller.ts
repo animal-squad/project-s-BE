@@ -1,13 +1,22 @@
 import { Controller, Get, Post, Body, Param, Delete, Query, Put } from '@nestjs/common'
 import { BucketService } from './bucket.service'
-import { BucketDto, BucketResponseDto, CreateBucketResponseDto, UpdateShareDto, UpdateShareResponseDto, UpdateTitleDto } from './dto/bucket.dto'
+import {
+    BucketDto,
+    BucketResponseDto,
+    CreateBucketResponseDto,
+    SearchBucketQueryDto,
+    UpdateShareDto,
+    UpdateShareResponseDto,
+    UpdateTitleDto,
+} from './dto/bucket.dto'
 import { BucketUnauthorizedUserResponse, NotBucketOwnerResponse, NotLoginResponse } from '../user/user.exception'
 import { GetUser } from '../user/user.decorator'
 import { Bucket } from '@prisma/client'
 import { PaginatedBucketDto, PaginationQueryDto } from '../utils/pagination.dto'
 import { ApiBody, ApiCookieAuth, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger'
+import { NoSearchWordException } from './bucket.exception'
 
-@ApiTags('Bucket API')
+@ApiTags('Bucket')
 @ApiCookieAuth('connect.sid')
 @ApiHeader({ name: 'Cookie', description: '세션 id가 저장된 쿠키', required: true })
 @ApiResponse({ status: 401, description: '쿠키에 세션 정보 없음', type: NotLoginResponse })
@@ -24,6 +33,21 @@ export class BucketController {
     @Get('/')
     async getAll(@Query() query: PaginationQueryDto, @GetUser() userId: number): Promise<PaginatedBucketDto<Bucket>> {
         return await this.bucketService.findAll(userId, query)
+    }
+
+    @ApiOperation({
+        summary: '바구니 검색 API',
+        description: '제목을 기준으로 바구니 검색',
+    })
+    @ApiQuery({ description: '검색어', type: SearchBucketQueryDto })
+    @ApiResponse({ status: 200, description: '검색 결과 반환' })
+    @ApiResponse({ status: 400, description: '검색어 없음' })
+    @Get('/search')
+    async searchBucket(@Query() query: SearchBucketQueryDto, @GetUser() userId: number): Promise<PaginatedBucketDto<Bucket>> {
+        if (!query.query) {
+            throw new NoSearchWordException()
+        }
+        return await this.bucketService.searchBucket(query, userId)
     }
 
     @ApiOperation({

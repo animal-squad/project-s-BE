@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { BucketDto } from './dto/bucket.dto'
+import { BucketDto, SearchBucketQueryDto } from './dto/bucket.dto'
 import { PrismaService } from '../../prisma/prisma.service'
 import { LinkService } from '../link/link.service'
 import { PaginatedBucketDto, PaginationQueryDto } from '../utils/pagination.dto'
@@ -200,5 +200,46 @@ export class BucketService {
             },
         })
         return await this.prisma.$transaction([deleteLinks, deleteBucket])
+    }
+
+    /**
+     * 바구니 제목 검색
+     * @param query 검색 정보, 페이지 정보
+     * @param userId 사용자 식별자
+     */
+    async searchBucket(query: SearchBucketQueryDto, userId: number): Promise<PaginatedBucketDto<Bucket>> {
+        const page = Number(query.page) || 1
+        const take = Number(query.take) || 10
+
+        const [buckets, totalBuckets] = await Promise.all([
+            this.prisma.bucket.findMany({
+                skip: (page - 1) * take,
+                take: take,
+                where: {
+                    userId: userId,
+                    title: {
+                        contains: query.query,
+                        mode: 'insensitive',
+                    },
+                },
+                orderBy: {
+                    createdAt: 'desc',
+                },
+            }),
+            this.prisma.bucket.count({
+                where: { userId: userId, title: { contains: query.query, mode: 'insensitive' } },
+            }),
+        ])
+
+        const formattedBuckets = buckets.map(bucket => ({
+            bucketId: bucket.bucketId,
+            userId: userId,
+            title: bucket.title,
+            linkCount: bucket.link.length,
+            createdAt: bucket.createdAt,
+            link: bucket.link,
+            isShared: false,
+        }))
+        return new PaginatedBucketDto(formattedBuckets, page, take, totalBuckets)
     }
 }

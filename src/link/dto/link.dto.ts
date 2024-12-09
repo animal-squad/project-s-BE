@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { Type } from 'class-transformer'
+import { IsOptional } from 'class-validator'
 
 class InputLinkDto {
     @ApiProperty({ description: 'Link Id', example: 'VxLHY9N9' })
@@ -69,4 +71,18 @@ export class BodyTagDto {
 export class DeleteLinkDto {
     @ApiProperty({ description: '삭제할 링크의 id 모음', example: ['UhqcwGQg', 'Y0XW1Ep'] })
     linkId: string[]
+}
+
+export class SearchLinkQueryDto {
+    @Type(() => Number)
+    @IsOptional()
+    page?: number
+
+    @Type(() => Number)
+    @IsOptional()
+    take?: number
+
+    @ApiProperty({ description: '검색어', example: '링크' })
+    @IsOptional()
+    query?: string
 }

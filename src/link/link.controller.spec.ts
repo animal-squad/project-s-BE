@@ -5,6 +5,7 @@ import { describe } from 'node:test'
 import { HttpService } from '@nestjs/axios'
 import { CreateLinkDto } from './dto/link.dto'
 import { of } from 'rxjs'
+import { HttpStatus } from '@nestjs/common'
 
 const mockLinkService = {
     updateTags: jest.fn(),
@@ -12,6 +13,7 @@ const mockLinkService = {
     updateLink: jest.fn(),
     deleteLinks: jest.fn(),
     getLinks: jest.fn(),
+    searchLink: jest.fn(),
 }
 
 const mockHttpService = {
@@ -239,6 +241,66 @@ describe('LinkController', () => {
 
             expect(mockLinkService.getLinks).toHaveBeenCalledWith(query, mockBody, userId)
             expect(result).toEqual(mockResult)
+        })
+    })
+
+    describe('searchLink', () => {
+        it('should get searched links', async () => {
+            const mockQuery = { query: '키워드' }
+            const expectedResult = [
+                {
+                    linkId: 'VxLHY9N9',
+                    userId: 1,
+                    URL: 'www.naver.com',
+                    createdAt: '2024-11-09T16:05:48.292Z',
+                    openedAt: '2024-11-09T16:05:48.292Z',
+                    views: 0,
+                    tags: ['검색', '도구'],
+                    keywords: ['키워드1', '키워드2'],
+                    title: '네이버',
+                },
+                {
+                    linkId: 'hfuwjw4U',
+                    userId: 1,
+                    URL: 'www.daum.net',
+                    createdAt: '2024-11-09T16:05:48.292Z',
+                    openedAt: '2024-11-09T16:05:48.292Z',
+                    views: 0,
+                    tags: ['검색', '도구'],
+                    keywords: ['키워드1', '키워드2'],
+                    title: '다음',
+                },
+                {
+                    linkId: 'kT2WKkom',
+                    userId: 1,
+                    URL: 'www.google.com',
+                    createdAt: '2024-11-09T16:05:48.292Z',
+                    openedAt: '2024-11-09T16:05:48.292Z',
+                    views: 0,
+                    tags: ['검색', '도구'],
+                    keywords: ['키워드1', '키워드2'],
+                    title: '구글',
+                },
+            ]
+            mockLinkService.searchLink.mockResolvedValue(expectedResult)
+            const result = await linkController.searchLink(mockQuery, userId)
+
+            expect(mockLinkService.searchLink).toHaveBeenCalledWith(mockQuery, userId)
+            expect(result).toEqual(expectedResult)
+        })
+
+        it('should throw NoSearchWordException when query word is empty', async () => {
+            const mockQuery = { query: '' }
+            await expect(linkController.searchLink(mockQuery, userId)).rejects.toMatchObject({
+                response: {
+                    name: 'NoSearchWord',
+                    statusCode: HttpStatus.BAD_REQUEST,
+                    errorCode: 752,
+                    message: 'Search keyword is not typed',
+                },
+            })
+
+            expect(mockLinkService.searchLink).not.toHaveBeenCalled()
         })
     })
 })
